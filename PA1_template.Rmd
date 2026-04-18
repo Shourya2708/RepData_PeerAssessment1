@@ -1,0 +1,143 @@
+---
+title: "Activity Monitoring Analysis"
+author: "Shouryaman Singh"
+date: "2026-04-18"
+output:
+  html_document: default
+  md_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+```
+
+## Loading and preprocessing the data
+
+```{r}
+data <- read.csv("activity.csv")
+head(data)
+```
+
+---
+
+## What is mean total number of steps taken per day?
+
+```{r}
+steps_per_day <- data %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps, na.rm = TRUE))
+```
+
+```{r}
+hist(steps_per_day$total_steps,
+     main = "Total Steps Per Day",
+     xlab = "Steps",
+     col = "blue")
+```
+
+```{r}
+mean_steps <- mean(steps_per_day$total_steps)
+median_steps <- median(steps_per_day$total_steps)
+
+mean_steps
+median_steps
+```
+
+The mean number of steps per day is **`r round(mean_steps,2)`** and the median is **`r round(median_steps,2)`**.
+
+---
+
+## What is the average daily activity pattern?
+
+```{r}
+avg_interval <- data %>%
+  group_by(interval) %>%
+  summarise(avg_steps = mean(steps, na.rm = TRUE))
+```
+
+```{r}
+plot(avg_interval$interval, avg_interval$avg_steps,
+     type = "l",
+     xlab = "Interval",
+     ylab = "Average Steps")
+```
+
+```{r}
+avg_interval[which.max(avg_interval$avg_steps), ]
+```
+
+---
+
+## Imputing missing values
+
+```{r}
+sum(is.na(data$steps))
+```
+
+```{r}
+data_filled <- data
+
+for(i in 1:nrow(data_filled)){
+  if(is.na(data_filled$steps)){
+    data_filled$steps[i] <- avg_interval$avg_steps[
+      avg_interval$interval == data_filled$interval[i]
+    ]
+  }
+}
+```
+
+```{r}
+steps_per_day2 <- data_filled %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps))
+```
+
+```{r}
+hist(steps_per_day2$total_steps,
+     main = "Total Steps Per Day (After Imputation)",
+     xlab = "Steps",
+     col = "green")
+```
+
+```{r}
+mean2 <- mean(steps_per_day2$total_steps)
+median2 <- median(steps_per_day2$total_steps)
+
+mean2
+median2
+```
+
+After imputing missing values, the mean is **`r round(mean2,2)`** and the median is **`r round(median2,2)`**.
+
+---
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+data_filled$date <- as.Date(data_filled$date)
+
+data_filled$day_type <- ifelse(
+  weekdays(data_filled$date) %in% c("Saturday", "Sunday"),
+  "Weekend",
+  "Weekday"
+)
+```
+
+```{r}
+avg_daytype <- data_filled %>%
+  group_by(interval, day_type) %>%
+  summarise(avg_steps = mean(steps))
+```
+
+```{r}
+ggplot(avg_daytype, aes(x = interval, y = avg_steps)) +
+  geom_line() +
+  facet_wrap(~day_type) +
+  labs(title = "Activity Pattern: Weekday vs Weekend",
+       x = "Interval",
+       y = "Average Steps")
+```
+
+The activity patterns differ between weekdays and weekends.
